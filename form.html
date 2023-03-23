@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        text-align: center;
+        width: 100vw;
+        height: 100vh;
+      }
+      #loading-container, #ui-container, #thank-you-container {
+        display: flex;
+        height: auto;
+        width: 98%;
+        margin: 0 auto;
+        justify-content:center;
+        align-items: center;
+        flex-direction:column;
+        box-sizing: border-box;
+        padding: 25px;
+      }
+      p {width: fit-content;text-align:center;}
+      .user_name {font-weight: 600;}
+      .user_image {width: 50px; height: 50px; border-radius: 50%; object-fit:cover;margin:10px;}
+      #person-info {display:flex;justify-content: center;align-items: center;}
+      #choose-btn {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align:center;
+        color: white;
+        background: #3B80D6;
+        border-radius: 8px;
+        padding: 15px 45px;
+        transition: transform .5s;
+      }
+      #choose-btn:hover {cursor: pointer;transform:scale(1.1);transition:transform .5s;}
+      #choose-btn:active {transform: scale(1);}
+    </style>
+  </head>
+  <body>
+    <div id="loading-container">
+      <p>Please wait...</p>
+    </div>
+    <div id="ui-container" style="display:none;">
+      <div id="person-info">
+        <img class="user_image" src="" />
+        <p><span class="user_name"></span> is requesting</p>
+      </div>
+      <h1 class="folder_name"></h1>
+      <p>Only <span class="user_name"></span> will see these files unless they choose to share them.</p>
+      <form style="display:none;opacity:0;" onsubmit="startUpload(event)">
+        <label for="name">Your Name</label>
+        <input type="text" id="name" name="name" placeholder="ex. John Doe" required>
+        <label for="email">Your Email</label>
+        <input type="text" id="email" name="email" placeholder="ex. email@gmail.com" required>
+        <input id="submit-btn" type='submit' value='Upload'>
+      </form>
+      <img id="illustration" src="https://i.ibb.co/7XvSc8y/illustration.png" style="max-width: 500px;" />
+      <input name="file" id="choose" type="file" multiple hidden>
+      <label for="choose" id="choose-btn">Choose Files</label>
+    </div>
+    <div id="thank-you-container" style="display:none">
+      <h1>Thank You!</h1>
+      <p><span class="user_name"></span> has received your submission.</p>
+      <img src="https://i.ibb.co/DbbXsvc/illustration-confirm.png" style="max-width: 500px;" />
+    </div>
+
+    <script>
+
+      /* update information and show main UI */
+      google.script.run.withSuccessHandler((response) => {
+        if (response.success){
+          document.querySelector(".user_image").src = response.userPhoto;
+          document.querySelectorAll(".user_name").forEach(name => name.innerText = response.userName);
+          document.querySelector(".folder_name").innerText = response.folderName;
+          showUI();
+        } else {
+          alert(response.error);
+        }
+      }).gatherInfo();
+
+      //on file select, check if files are less than 100MB
+      //if they are larger, display error and clear files
+      //if they are smaller, move to next stage
+      let imageInput = document.getElementById("choose");
+      imageInput.onchange = evt => {
+        let size = 0;
+        [...imageInput.files].forEach((file, i) => {
+          if (file){
+            size += file.size;
+          }
+        })
+        
+        if (size < 104857600){
+          showForm();
+          changeUploadButton(`Upload ${imageInput.files.length} file(s)`);
+        } else {
+          alert(`Drive file transfer has a 100MB limit, and the files you selected total ${(size / 1000000).toFixed(2)}MB`)
+          imageInput.value = "";
+        }
+        
+      }
+
+      //prevents default form submit then begins folder creation and file upload
+      function startUpload(e){
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        createOrConfirmFolder(submitFiles);
+      }
+
+      //creates a folder then calls our file upload function
+      function createOrConfirmFolder(callback) {
+        changeUploadButton("Starting Upload...");
+        const name = document.getElementById("name").value;
+        const email = document.getElementById("email").value;
+        google.script.run.withSuccessHandler((response) => {
+              if (response.success){
+                callback(name, email);
+              } else {
+                alert(response.error);
+              }
+        }).createSubFolder(name, email);
+      }
+
+      function submitFiles(name, email){
+        let count = 1;
+        [...imageInput.files].forEach((file, i) => {
+          const fr = new FileReader();
+          fr.onload = (e) => {
+            const data = e.target.result.split(",");
+            const obj = {fileName: imageInput.files[i].name, mimeType: data[0].match(/:(\w.+);/)[1], data: data[1]};
+            google.script.run.withSuccessHandler((response) => {
+              if (response.success){
+                changeUploadButton(`Uploading ${count++} / ${imageInput.files.length} file(s)`)
+                if (count - imageInput.files.length === 1){
+                  changeUploadButton("Upload Complete!");
+                  setTimeout(showThankYou, 500);
+                }
+              } else {
+                alert(response.error);
+              }
+            }).saveFileInFolder(obj, name, email);
+          }
+          fr.readAsDataURL(file);
+        });
+      }
+
+      /* UI functions */
+
+      function showUI(){
+        document.querySelector("#loading-container").remove();
+        document.querySelector("#ui-container").style.display = "flex";
+      }
+
+      function showForm(){
+        document.querySelector("#illustration").style.display = "none";
+        const form = document.querySelector("form");
+        form.style.display = "block";
+        form.style.opacity = "1";
+        document.querySelector("#choose-btn").style.display = "none";
+      }
+
+      function showThankYou(){
+        document.querySelector("#ui-container").remove();
+        document.querySelector("#thank-you-container").style.display = "flex";
+      }
+
+      function changeUploadButton(string){
+        document.querySelector("#submit-btn").value = string;
+      }
+      
+    </script>
+  </body>
+
+</html>
