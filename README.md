@@ -14,7 +14,7 @@ I was recently asked by a friend if I knew of a way to receive files from multip
 
 "File requests" is the common term for this feature, so I started searching the internet for a service that offers free file requests that also satisfies these constraints. I couldn't find any services that were able to do this, but I did find mentions of Google Apps Script being able to provide a way to interact with a Google Drive account. Google Drive offers 15gb of storage absolutely free, and their storage tiers are reasonably priced. I found some code online that was able to achieve this somewhat, but it was littered with links to non-free services, and was intentionally limited to single file uploads of 2MB or less, rendering it pretty much useless. 
 
-Google Apps Script is just JavaScript, so I read the docs, found [this helpful gist](https://gist.github.com/tanaikech/88fcae255abb4aac5bec81ad5ca213ef), and was able to come up with a multi-file solution that works good enough for my friend's use-case. I tried to keep the UI as simple ass possible so you can customize it to your liking. 
+Google Apps Script is just JavaScript, so I read the docs, found [this helpful gist](https://gist.github.com/tanaikech/88fcae255abb4aac5bec81ad5ca213ef), and was able to come up with a multi-file solution that works good enough for my friend's use-case. I tried to keep the UI as simple as possible so you can customize it to your liking. 
 
 # Limitations
 
